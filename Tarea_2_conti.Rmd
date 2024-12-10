@@ -1,0 +1,171 @@
+---
+title: "Tarea_2_Contingencias_de_vida_I"
+author: "Gustavo Amador Fonseca C20451"
+date: "2024-05-12"
+output: html_document
+---
+```{r}
+library(readxl)
+
+
+tabla_hombres <- read_excel("C:/Users/AMADOR/OneDrive - Universidad de Costa Rica/I-2024/Contingencias de vida I/Tareas/Tarea 2/MortalidadesSupen.xlsx", 
+    sheet = "Hombre", range = "A6:EW121")
+#View(tabla_hombres)
+
+
+
+tabla_mujeres <- read_excel("C:/Users/AMADOR/OneDrive - Universidad de Costa Rica/I-2024/Contingencias de vida I/Tareas/Tarea 2/MortalidadesSupen.xlsx", 
+    sheet = "Mujer", range = "A5:EW121")
+View(tabla_mujeres)
+
+
+```
+
+```{r}
+nPx <- function(x,y,n,qx,w){
+  
+  npx <- 1
+  if(n>=1){
+    
+    for (t in 0:(n-1)) {
+      #print(as.numeric(npx))
+      #print((as.numeric(qx[x+1+t, y-1998+t])))
+      
+      npx <- npx * (1 - qx[x+1+t, y-1998+t])
+      
+      #print(as.numeric(npx))
+      #print("vue")
+    
+    }
+  }
+
+  
+  
+  #print("resultado:")
+  return(as.numeric(npx))
+}
+
+print(nPx(0,2000,2,tabla_hombres,115))
+
+```
+
+
+
+
+```{r}
+Axn <- function(x,y,n,qx,w){
+#' Axn - Calcular la esperanza del valor presente de un seguro temporal
+#'
+#' La función Axn calcula la esperanza del valor presente de un seguro temporal
+#' cuyo beneficio se paga al final del año de muerte, utilizando la tabla de mortalidad dinámica de la SUPEN.
+#'
+#' @param x Edad en años cumplidos del asegurado.
+#' @param y Año actual.
+#' @param n Temporalidad del seguro, es decir, el número de años para los cuales se está contratando el seguro.
+#' @param qx Tabla de mortalidad, representada como una matriz por edad y año.
+#' @param w Edad final de la tabla de mortalidad.
+#' @return La esperanza del valor presente de un seguro temporal.
+  
+  if(n < 1){
+    stop("La temporalidad del seguro debe ser de almenos un año")
+  }
+  
+  if(n> w-x){
+    stop(paste("Para la edad de", x ,"años, la tomporalidad máxima de un seguro es de ", w-x))
+  } 
+  
+  if(x<0 || x>w){
+    stop("Edad en años cumplidos inválida")
+  }
+  
+  if(y<2000 || y >2150){
+    stop("Año actual inválido")
+  }
+  
+  
+  #iniciar variables
+  axn <- 0
+  v <- (1/(1 + 0.05))
+  #xqx <- 0
+  
+  for (k in 0:(n-1)){
+    
+    dife_kqx <- nPx(x,y,k,qx,w) - nPx(x,y,k+1,qx,w)
+    #print(dife_kqx)
+    axn <- axn + v^{k+1} * dife_kqx 
+    #print(paste("axn: ", axn))
+  }
+
+  return(axn)   
+}  
+
+print(Axn(110,2024,5,tabla_hombres,115))
+  
+```
+
+# Data frame temporal Hombres
+```{r}
+
+# Crear un dataframe para guardar los valores de las esperanzas
+df_Axn_hombres <- data.frame(
+  edad = 1:100,              
+  "2024" = 1:100,     
+  "2050" = rep(NA, 100),
+  check.names = FALSE
+)
+
+for (edad in 1:100) {
+  for(ano_respec in 1:2){
+    if(ano_respec == 1){
+      df_Axn_hombres[edad,2] <- Axn(edad,2024,10,tabla_hombres,115)  # Suponiendo que Axn() devuelve la población proyectada
+    }
+    else{
+      df_Axn_hombres[edad,3] <- Axn(edad,2050,10,tabla_hombres,115)  # Suponiendo que Axn() devuelve la población proyectada
+    }
+  }
+}
+
+print(df_Axn_hombres)
+
+```
+# Data frame temporal Mujeres
+```{r}
+# Crear un dataframe para guardar los valores de las esperanzas
+# Crear un dataframe para guardar los valores de las esperanzas
+df_Axn_mujeres <- data.frame(
+  edad = 1:100,              
+  "2024" = 1:100,     
+  "2050" = rep(NA, 100),
+  check.names = FALSE
+)
+
+for (edad in 1:100) {
+  for(ano_respec in 1:2){
+    if(ano_respec == 1){
+      df_Axn_mujeres[edad,2] <- Axn(edad,2024,10,tabla_mujeres,115)  # Suponiendo que Axn() devuelve la población proyectada
+    }
+    else{
+      df_Axn_mujeres[edad,3] <- Axn(edad,2050,10,tabla_mujeres,115)  # Suponiendo que Axn() devuelve la población proyectada
+    }
+  }
+}
+
+print(df_Axn_mujeres)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

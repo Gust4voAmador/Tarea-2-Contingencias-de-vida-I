@@ -1,0 +1,334 @@
+---
+title: "tarea_2_contingencias"
+output: html_document
+date: "2024-05-12"
+---
+
+```{r}
+library(readxl)
+
+mujeres <- read_excel("C:/Users/AMADOR/OneDrive - Universidad de Costa Rica/I-2024/Contingencias de vida I/Tareas/Tarea 2/MortalidadesSupen.xlsx", 
+    sheet = "Mujer", range = "A5:EW121")
+
+#View(mujeres)
+
+hombres <- read_excel("C:/Users/AMADOR/OneDrive - Universidad de Costa Rica/I-2024/Contingencias de vida I/Tareas/Tarea 2/MortalidadesSupen.xlsx", 
+    sheet = "Hombre", range = "A6:EW121")
+
+```
+
+
+# Ejercicio 2
+
+```{r}
+
+# x es la edad en años cumplidos
+# y es el año actual 
+# qx es la tabla de mortalidad (matriz por edad y año)
+# w es la edad final de la tabla
+
+ax <- function(x, y, qx, w){
+  
+  anos_max <- w-x
+  v <- 1/(1+0.05)
+  kpx <- 1
+  evp <- v * qx[x+1, y-1998]
+  
+  for(j in 2:anos_max){
+    
+    if(y-1998+(j-2) < 152){
+      
+      kpx <- kpx * (1-qx[x+(j-1), y-1998+(j-2)])
+      kqx <- qx[x+j, y-1998+j-1]
+      vp <- v^(j)
+      evp <- evp + vp * (kpx * kqx)
+      
+    }  
+    else{
+      
+      kpx <- kpx * (1-qx[x+(j-1), 152])
+      kqx <- qx[x+j, 152]
+      vp <- v^(j)
+      evp <- evp + vp * (kpx * kqx)
+      
+    }
+    
+  }
+  
+  return(as.numeric(evp[[1]]))
+
+}
+
+prueba1 <- ax(44, 2050, hombres, 115)
+print(prueba1)
+
+```
+
+# Ejercicio 3
+
+```{r}
+#Función que calcula la probabilidad de que una persona de x años sobreviva n años.
+nPx <- function(x,y,n,qx,w){
+  
+  npx <- 1
+  if(n>=1){
+    
+    for (t in 0:(n-1)) {
+      #print(as.numeric(npx))
+      #print((as.numeric(qx[x+1+t, y-1998+t])))
+      
+      npx <- npx * (1 - qx[x+1+t, y-1998+t])
+      
+      #print(as.numeric(npx))
+      #print("vue")
+    
+    }
+  }
+
+  #print("resultado:")
+  return(as.numeric(npx))
+}
+```
+
+
+```{r}
+Axn <- function(x,y,n,qx,w){
+#' Axn - Calcular la esperanza del valor presente de un seguro temporal
+#'
+#' La función Axn calcula la esperanza del valor presente de un seguro temporal
+#' cuyo beneficio se paga al final del año de muerte, utilizando la tabla de mortalidad dinámica de la SUPEN.
+#'
+#' @param x Edad en años cumplidos del asegurado.
+#' @param y Año actual.
+#' @param n Temporalidad del seguro, es decir, el número de años para los cuales se está contratando el seguro.
+#' @param qx Tabla de mortalidad, representada como una matriz por edad y año.
+#' @param w Edad final de la tabla de mortalidad.
+#' @return La esperanza del valor presente de un seguro temporal.
+  
+  if(n < 1){
+    stop("La temporalidad del seguro debe ser de al menos un año")
+  }
+  
+  if(n> x+w){
+    stop(paste("La temporalidad debe ser como máximo de: ", x+w))
+  } 
+  
+  if(x<0 || x>w){
+    stop("Edad en años cumplidos inválida")
+  }
+  
+  if(y<2000 || y >2150){
+    stop("Año actual inválido")
+  }
+  
+  
+  #iniciar variables
+  axn <- 0
+  v <- (1/(1 + 0.05))
+  #xqx <- 0
+  
+  for (k in 0:(n-1)){
+    
+    dife_kqx <- nPx(x,y,k,qx,w) - nPx(x,y,k+1,qx,w)
+    #print(dife_kqx)
+    axn <- axn + v^{k+1} * dife_kqx 
+    #print(paste("axn: ", axn))
+  }
+
+  return(axn)   
+}  
+  
+```
+
+
+# Ejercicio 4
+
+
+```{r}
+#df_2024_hombres <- as.data.frame()
+
+edades <- 1:100
+
+# Calcular la esperanza para edadades entre 1 y 100 en el 2024 para hombres
+apply_2024_hombres <- lapply(edades, function(edad) {
+  ax(edad, 2024, hombres, 115)
+})
+
+# Calcular la esperanza para edadades entre 1 y 100 en el 2050 para hombres
+apply_2050_hombres <- lapply(edades, function(edad) {
+  ax(edad, 2050, hombres, 115)
+})
+
+# Calcular la esperanza para edadades entre 1 y 100 en el 2024 para mujeres
+apply_2024_mujeres <- lapply(edades, function(edad) {
+  ax(edad, 2024, mujeres, 115)
+})
+
+# Calcular la esperanza para edadades entre 1 y 100 en el 2050 para mujeres
+apply_2050_mujeres <- lapply(edades, function(edad) {
+  ax(edad, 2050, mujeres, 115)
+})
+
+```
+
+
+```{r}
+
+# transformarlo a dataframe
+df_2024_hombres <- do.call(rbind, apply_2024_hombres)
+
+# transformarlo a dataframe
+df_2050_hombres <- do.call(rbind, apply_2050_hombres)
+
+# transformarlo a dataframe
+df_2024_mujeres <- do.call(rbind, apply_2024_mujeres)
+
+# transformarlo a dataframe
+df_2050_mujeres <- do.call(rbind, apply_2050_mujeres)
+
+# asegurarse que se encuentren como números
+df_hombres <- as.data.frame(cbind(seq(1, 100), apply_2024_hombres, apply_2050_hombres))
+df_hombres$apply_2024_hombres <- as.numeric(df_hombres$apply_2024_hombres)
+df_hombres$apply_2050_hombres <- as.numeric(df_hombres$apply_2050_hombres)
+df_hombres$V1 <- as.numeric(df_hombres$V1)
+
+df_mujeres <- as.data.frame(cbind(seq(1, 100), apply_2024_mujeres, apply_2050_mujeres))
+df_mujeres$apply_2024_mujeres <- as.numeric(df_mujeres$apply_2024_mujeres)
+df_mujeres$apply_2050_mujeres <- as.numeric(df_mujeres$apply_2050_mujeres)
+df_mujeres$V1 <- as.numeric(df_mujeres$V1)
+
+View(df_hombres)
+
+```
+
+
+```{r}
+
+library(ggplot2)
+
+# Graficar para hombres
+ggplot(data = df_hombres, aes(x = V1)) +
+  geom_line(aes(y = apply_2024_hombres, color = "2024 Hombres")) +
+  geom_line(aes(y = apply_2050_hombres, color = "2050 Hombres")) +
+  labs(x = "Edad", y = "Esperanza", color = "Data") +
+  ggtitle("Esperanza del Valor Presente del Seguro de Vida Completo Hombres")
+
+# Graficar para mujeres
+ggplot(data = df_mujeres, aes(x = V1)) +
+  geom_line(aes(y = apply_2024_mujeres, color = "2024 Mujeres")) +
+  geom_line(aes(y = apply_2050_mujeres, color = "2050 Mujeres")) +
+  labs(x = "Edad", y = "Esperanza", color = "Data") +
+  ggtitle("Esperanza del Valor Presente del Seguro de Vida Completo Mujeres")
+
+# Graficar en general
+ggplot() +
+  geom_line(data = df_hombres, aes(x = V1, y = apply_2024_hombres, color = "2024 Hombres")) +
+  geom_line(data = df_hombres, aes(x = V1, y = apply_2050_hombres, color = "2050 Hombres")) +
+  geom_line(data = df_mujeres, aes(x = V1, y = apply_2024_mujeres, color = "2024 Mujeres")) +
+  geom_line(data = df_mujeres, aes(x = V1, y = apply_2050_mujeres, color = "2050 Mujeres")) +
+  labs(x = "Edad", y = "Esperanza", color = "Data") +
+  ggtitle("Esperanza del Valor Presente del Seguro de Vida Completo")
+
+```
+
+# Ejercicio 5
+
+## DataFrames de las esperanzas
+```{r}
+
+# Crear un dataframe para guardar los valores de las esperanzas
+ 
+
+df_Axm_hombres <- data.frame(
+  edad = 1:100,              
+  "2024" = 1:100,     
+  "2050" = rep(NA, 100),
+  check.names = FALSE
+)
+
+for (edad in 1:100) {
+  for(ano_respec in 1:2){
+    
+    if(ano_respec == 1){
+      df_Axm_hombres[edad,2] <- Axn(edad,2024,10,hombres,115)
+    }
+    else{
+      df_Axm_hombres[edad,3] <- Axn(edad,2050,10,hombres,115)
+    }
+  }
+}
+
+
+df_Axm_mujeres <- data.frame(
+  edad = 1:100,              
+  "2024" = 1:100,     
+  "2050" = rep(NA, 100),
+  check.names = FALSE
+)
+
+for (edad in 1:100) {
+  for(ano_respec in 1:2){
+    
+    if(ano_respec == 1){
+      df_Axm_mujeres[edad,2] <- Axn(edad,2024,10,mujeres,115)
+    }
+    else{
+      df_Axm_mujeres[edad,3] <- Axn(edad,2050,10,mujeres,115)
+    }
+  }
+}
+
+```
+```{r}
+
+df_Axm_hombres$"2024" <- as.numeric(df_Axm_hombres$"2024")
+df_Axm_hombres$"2050" <- as.numeric(df_Axm_hombres$"2050")
+df_Axm_hombres$edad <- as.numeric(df_Axm_hombres$edad)
+
+df_Axm_mujeres$"2024" <- as.numeric(df_Axm_mujeres$"2024")
+df_Axm_mujeres$"2050" <- as.numeric(df_Axm_mujeres$"2050")
+df_Axm_mujeres$edad <- as.numeric(df_Axm_mujeres$edad)
+
+```
+
+## Gráficos 
+```{r}
+library(ggplot2)
+
+# Graficar para hombres
+ggplot(data = df_Axm_hombres, aes(x = edad)) +
+  geom_line(aes(y = `2024`, color = "2024 Hombres")) +
+  geom_line(aes(y = `2050`, color = "2050 Hombres")) +
+  labs(x = "Edad", y = "Esperanza", color = "Data") +
+  ggtitle("Esperanza del Valor Presente del Seguro Temporal de Vida a 10 años Hombres")
+
+# Graficar para mujeres
+ggplot(data = df_Axm_mujeres, aes(x = edad)) +
+  geom_line(aes(y = `2024`, color = "2024 Mujeres")) +
+  geom_line(aes(y = `2050`, color = "2050 Mujeres")) +
+  labs(x = "Edad", y = "Esperanza", color = "Data") +
+  ggtitle("Esperanza del Valor Presente del Seguro Temporal de Vida a 10 años Mujeres")
+
+# Graficar en general
+ggplot() +
+  geom_line(data = df_Axm_hombres, aes(x = edad, y = `2024`, color = "2024 Hombres")) +
+  geom_line(data = df_Axm_hombres, aes(x = edad, y = `2050`, color = "2050 Hombres")) +
+  geom_line(data = df_Axm_mujeres, aes(x = edad, y = `2024`, color = "2024 Mujeres")) +
+  geom_line(data = df_Axm_mujeres, aes(x = edad, y = `2050`, color = "2050 Mujeres")) +
+  labs(x = "Edad", y = "Esperanza", color = "Data") +
+  ggtitle("Esperanza del Valor Presente del Seguro Temporal de Vida a 10 años")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
